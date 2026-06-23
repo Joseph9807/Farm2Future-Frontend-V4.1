@@ -38,6 +38,13 @@ export interface FarmBatch {
   water_usage_l: number
   fertiliser_type: FertiliserType
   fertiliser_usage_kg: number
+  // --- Sales (required as of v4.1, awaiting backend confirmation) ---
+  sale_quantity_kg: number      // quantity sold in this batch (kg)
+  sale_unit_price_rm: number    // unit price in Malaysian Ringgit per kg (RM/kg)
+  buyer_name: string            // free-text buyer name (no buyer registry yet)
+  // --- Input costs (required as of v4.1, awaiting backend confirmation) ---
+  seed_cost_rm: number          // seed cost in RM
+  fertiliser_cost_rm: number    // fertiliser cost in RM (total for this batch)
 }
 export interface IotSnapshot {
   soil_moisture_pct: number

@@ -1,7 +1,14 @@
-# Farm2Future — Frontend ↔ Backend API Contract (v1)
+# Farm2Future — Frontend ↔ Backend API Contract (v1.1)
 
-> **Status:** Draft v1 — drafted by the frontend (Joe, Joseph). Awaiting review by backend (Yin Sizhe).
-> **Last updated:** 2026-06-12
+> **Status:** Draft v1.1 — drafted by the frontend (Joe, Joseph). Awaiting review by backend (Yin Sizhe).
+> **Last updated:** 2026-06-23
+> **Changelog:**
+> - **v1.1 (2026-06-23)** — Farm Data: added 5 fields to `batch`
+>   (sale quantity, unit price, buyer name, seed cost, fertiliser cost).
+>   Originally drafted as optional; **promoted to required** on 2026-06-23
+>   16:xx per product decision. **Pending backend confirmation** — see note
+>   in §2.
+> - **v1 (2026-06-12)** — initial draft.
 > **Frontend source of truth:** `src/types/api.ts`
 > **Frontend mock layer:** `src/api/__mocks__/index.ts` (matches these shapes 1:1 in mock mode)
 
@@ -96,7 +103,12 @@ Triggers a blockchain transaction to anchor the data on-chain.
     "yield_kg":             2500,
     "water_usage_l":        15000,
     "fertiliser_type":      "Organic Compost",
-    "fertiliser_usage_kg":  120
+    "fertiliser_usage_kg":  120,
+    "sale_quantity_kg":     2000,
+    "sale_unit_price_rm":   3.50,
+    "buyer_name":           "EcoFoods Corp",
+    "seed_cost_rm":         450.00,
+    "fertiliser_cost_rm":   280.00
   },
   "iot_snapshot": {
     "soil_moisture_pct": 42,
@@ -106,6 +118,28 @@ Triggers a blockchain transaction to anchor the data on-chain.
   }
 }
 ```
+
+> **v1.1 addendum (added 2026-06-23, pending backend confirmation):**
+> The five new fields `sale_quantity_kg`, `sale_unit_price_rm`, `buyer_name`,
+> `seed_cost_rm`, and `fertiliser_cost_rm` are **required** on the frontend
+> (the farmer must fill them before submitting). They are tracked as
+> cost-revenue inputs for ESG S (Social / fair income) and G (Governance /
+> traceability) scoring. Originally drafted as optional on 2026-06-23 14:xx;
+> **promoted to required** on 2026-06-23 16:xx per product decision.
+>
+> - `sale_quantity_kg` — number, kilograms sold in this batch (≤ `yield_kg`)
+> - `sale_unit_price_rm` — number, Malaysian Ringgit per kg (RM/kg), e.g. `3.50`
+> - `buyer_name` — free-text string, no buyer registry exists yet
+> - `seed_cost_rm` — number, total seed cost in RM for this batch
+> - `fertiliser_cost_rm` — number, total fertiliser cost in RM for this batch
+>
+> **Open questions for backend:**
+> 1. Do these 5 fields round-trip into the existing batch record, or should
+>    they live on a separate `sales` / `costs` sub-resource?
+> 2. If kept on `batch`, should the DB columns be `NOT NULL`?
+> 3. Any validation rules beyond positive numbers? (e.g. sale quantity ≤ yield)
+> 4. `buyer_name` is free-text for now — should we add a buyer registry later
+>    so it can be linked to the existing `User` table?
 
 **Response `200 OK`**
 ```json
