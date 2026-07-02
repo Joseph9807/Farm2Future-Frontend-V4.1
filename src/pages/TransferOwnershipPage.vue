@@ -1,25 +1,29 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { PlusCircle, ArrowRight, CheckCircle } from 'lucide-vue-next'
-import { issueToken, transferToken, ApiClientError } from '@/api'
+import { issueToken, transferToken, getTransactions, getTokens, ApiClientError } from '@/api'
+import type { Transaction, Token } from '@/types/api'
+import { useBatchId } from '@/composables/useBatchId'
 
 const isIssuing = ref(false)
 const isTransferring = ref(false)
 const showToast = ref<string | null>(null)
 const errorMsg = ref<string | null>(null)
 
-interface RecentTransfer { id: string; token: string; to: string; date: string }
-const recentTransfers = ref<RecentTransfer[]>([])
+const recentTransfers = ref<Transaction[]>([])
+const tokenOptions = ref<Token[]>([])
+const { latestBatchId } = useBatchId()
 
-onMounted(() => {
-  // Recent transfers come from the same /api/transactions endpoint,
-  // filtered to transfer-type events. Until that endpoint exists, show
-  // the same hardcoded list the original page displayed.
-  recentTransfers.value = [
-    { id: 'TXN-8829', token: 'TKN-2024-002', to: 'EcoFoods Corp',     date: 'Oct 24, 2024' },
-    { id: 'TXN-8810', token: 'TKN-2024-006', to: 'Global Mills',      date: 'Oct 20, 2024' },
-    { id: 'TXN-8795', token: 'TKN-2023-142', to: 'Sunrise Organics',  date: 'Oct 15, 2024' },
-  ]
+onMounted(async () => {
+  try {
+    const txnRes = await getTransactions()
+    recentTransfers.value = txnRes.items
+  } catch (_) { /* fallback: empty list */ }
+
+  try {
+    const tokenRes = await getTokens()
+    tokenOptions.value = tokenRes.items
+  } catch (_) { /* fallback: empty list */ }
 })
 
 function showSuccessToast(msg: string) {
@@ -36,7 +40,7 @@ async function handleIssue(e: Event) {
   try {
     const res = await issueToken({
       crop_type: (fd.get('cropType') as string) || 'Wheat',
-      batch_id: (fd.get('batchId') as string) || `BCH-2024-${Date.now()}`,
+      batch_id: fd.get('batchId') as string,
       quantity_kg: Number(fd.get('quantityKg') ?? 0),
     })
     showSuccessToast(`Token ${res.token_id} issued successfully on-chain.`)
@@ -84,7 +88,7 @@ async function handleTransfer(e: Event) {
         </div>
         <form @submit="handleIssue" class="space-y-4">
           <div><label class="block text-sm font-medium text-gray-700 mb-1">Crop Type</label><select name="cropType" class="input-field" required><option value="">Select crop...</option><option>Wheat</option><option>Rice</option><option>Corn</option><option>Soybeans</option></select></div>
-          <div><label class="block text-sm font-medium text-gray-700 mb-1">Batch ID (Auto-generated)</label><input type="text" name="batchId" class="input-field bg-gray-50" value="BCH-2024-8921" disabled /></div>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Batch ID</label><input type="text" name="batchId" class="input-field bg-gray-50" :value="latestBatchId ?? ''" disabled :placeholder="latestBatchId ? '' : 'Submit farm data first'" /></div>
           <div><label class="block text-sm font-medium text-gray-700 mb-1">Quantity (kg)</label><input type="number" name="quantityKg" class="input-field" placeholder="e.g. 5000" required min="1" /></div>
           <p v-if="errorMsg" class="text-sm text-red-600">{{ errorMsg }}</p>
           <button type="submit" :disabled="isIssuing" class="btn-primary w-full mt-2">{{ isIssuing ? 'Processing...' : 'Issue Token' }}</button>
@@ -98,7 +102,7 @@ async function handleTransfer(e: Event) {
           <h2 class="text-xl font-bold text-gray-900">Transfer Ownership</h2>
         </div>
         <form @submit="handleTransfer" class="space-y-4">
-          <div><label class="block text-sm font-medium text-gray-700 mb-1">Select Token</label><select name="tokenId" class="input-field" required><option value="">Select token...</option><option value="TKN-2024-001">TKN-2024-001 (Wheat Batch A)</option><option value="TKN-2024-004">TKN-2024-004 (Soybeans Batch A)</option><option value="TKN-2024-005">TKN-2024-005 (Cotton Batch D)</option></select></div>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Select Token</label><select name="tokenId" class="input-field" required><option value="">Select token...</option><option v-for="t in tokenOptions" :key="t.id" :value="t.id">{{ t.id }} ({{ t.asset }})</option></select></div>
           <div><label class="block text-sm font-medium text-gray-700 mb-1">Current Owner</label><input type="text" class="input-field bg-gray-50" value="Green Valley Farm (You)" disabled /></div>
           <div><label class="block text-sm font-medium text-gray-700 mb-1">New Owner Address / ID</label><input type="text" name="newOwnerAddress" class="input-field" placeholder="Enter blockchain address or Entity ID" required /></div>
           <button type="submit" :disabled="isTransferring" class="btn-primary w-full mt-2 bg-earth-700 hover:bg-earth-800 focus:ring-earth-600">{{ isTransferring ? 'Confirming...' : 'Confirm Transfer' }}</button>

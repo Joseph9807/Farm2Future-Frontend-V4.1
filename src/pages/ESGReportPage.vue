@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { Download, FileText, CheckCircle, AlertCircle, Sparkles } from 'lucide-vue-next'
-import { generateESGReport, exportESGReport, ApiClientError } from '@/api'
+import { generateESGReport, exportESGReport, getDashboardOverview, ApiClientError } from '@/api'
 import type { User, ESGReportResponse, ReportFormat, ESGRiskFlag, ESGReportScore } from '@/types/api'
 
 const props = defineProps<{ user: User }>()
@@ -11,6 +11,15 @@ const isExporting = ref<ReportFormat | null>(null)
 const showReport = ref(false)
 const errorMsg = ref<string | null>(null)
 const report = ref<ESGReportResponse | null>(null)
+const farmOptions = ref<string[]>([])
+
+// Default date range: current month
+const now = new Date()
+const y = now.getFullYear()
+const m = String(now.getMonth() + 1).padStart(2, '0')
+const lastDay = new Date(y, now.getMonth() + 1, 0).getDate()
+const defaultFrom = `${y}-${m}-01`
+const defaultTo = `${y}-${m}-${String(lastDay).padStart(2, '0')}`
 
 async function loadReport() {
   isGenerating.value = true
@@ -19,8 +28,8 @@ async function loadReport() {
   const fd = form ? new FormData(form) : new FormData()
   try {
     const res = await generateESGReport({
-      from: (fd.get('from') as string) || '2024-01-01',
-      to: (fd.get('to') as string) || '2024-12-31',
+      from: (fd.get('from') as string) || defaultFrom,
+      to: (fd.get('to') as string) || defaultTo,
       entity: isFarmer ? props.user.entityName : ((fd.get('entity') as string) || 'All Entities'),
     })
     report.value = res
@@ -51,7 +60,14 @@ async function handleExport(format: ReportFormat) {
   }
 }
 
-onMounted(loadReport)
+onMounted(() => { loadReport(); loadFarmOptions() })
+
+async function loadFarmOptions() {
+  try {
+    const res = await getDashboardOverview()
+    farmOptions.value = res.farms.filter(f => f !== 'All Farms')
+  } catch (_) { /* fallback: empty list */ }
+}
 
 // Build template-friendly arrays from the API response so the existing
 // template (which references scoreItems / riskFlags) keeps working.
@@ -79,15 +95,15 @@ function syncDerivedState() {
         <div class="flex-1">
           <label class="block text-sm font-medium text-gray-700 mb-1">Date Range</label>
           <div class="flex items-center space-x-2">
-            <input type="date" name="from" class="input-field" value="2024-01-01" />
+            <input type="date" name="from" class="input-field" :value="defaultFrom" />
             <span class="text-gray-500">to</span>
-            <input type="date" name="to" class="input-field" value="2024-12-31" />
+            <input type="date" name="to" class="input-field" :value="defaultTo" />
           </div>
         </div>
         <div v-if="!isFarmer" class="flex-1">
           <label class="block text-sm font-medium text-gray-700 mb-1">Farm / Entity</label>
           <select name="entity" class="input-field">
-            <option>All Entities</option><option>Green Valley Farm</option><option>Sunrise Organics</option><option>Highland Pastures</option>
+            <option>All Entities</option><option v-for="f in farmOptions" :key="f" :value="f">{{ f }}</option>
           </select>
         </div>
         <div class="w-full md:w-auto">
@@ -107,7 +123,7 @@ function syncDerivedState() {
           <div class="p-3 bg-farm-100 rounded-lg mr-4"><FileText class="w-6 h-6 text-farm-700" /></div>
           <div>
             <h2 class="text-xl font-bold text-gray-900">AI ESG Report</h2>
-            <p class="text-sm text-gray-500">Jan 1, 2024 - Dec 31, 2024 • {{ isFarmer ? user.entityName : 'All Entities' }}</p>
+            <p class="text-sm text-gray-500">{{ report?.period?.from ?? defaultFrom }} - {{ report?.period?.to ?? defaultTo }} • {{ isFarmer ? user.entityName : (report?.entity ?? 'All Entities') }}</p>
           </div>
         </div>
         <div class="flex space-x-3">

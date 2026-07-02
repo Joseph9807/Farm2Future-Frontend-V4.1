@@ -15,11 +15,13 @@ import {
   Wallet,
 } from 'lucide-vue-next'
 import { submitFarmData, ApiClientError } from '@/api'
+import { useBatchId } from '@/composables/useBatchId'
 
 const isSubmitting = ref(false)
 const showSuccess = ref(false)
 const errorMsg = ref<string | null>(null)
 const lastTxHash = ref<string | null>(null)
+const { latestBatchId } = useBatchId()
 
 // Reactive values for the new required sales/cost fields (v4.1).
 // Used both for submit and for the live revenue/profit preview.
@@ -87,6 +89,7 @@ async function handleSubmit(e: Event) {
       },
     })
     lastTxHash.value = res.tx_hash
+    latestBatchId.value = res.batch_id
     showSuccess.value = true
     setTimeout(() => (showSuccess.value = false), 4000)
   } catch (err) {
