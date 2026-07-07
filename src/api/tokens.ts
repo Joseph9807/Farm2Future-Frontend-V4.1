@@ -56,7 +56,11 @@ export async function getTokens(params: GetTokensParams = {}): Promise<GetTokens
       }
       return true
     })
-    return { items: filtered, total: filtered.length, page: params.page ?? 1, size: params.size ?? filtered.length }
+    const size = params.size ?? 20
+    const page = params.page ?? 1
+    const start = (page - 1) * size
+    const items = filtered.slice(start, start + size)
+    return { items, total: filtered.length, page, size }
   }
   return request<GetTokensResponse>('/api/tokens', { query: params as Record<string, string | number | undefined> })
 }
