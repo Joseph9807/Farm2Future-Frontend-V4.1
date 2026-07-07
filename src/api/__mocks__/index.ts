@@ -32,6 +32,15 @@ export const MOCK_TRANSACTIONS: Transaction[] = [
   { id: 'TXN-2024-108', token: 'TKN-2024-008', from: 'System',           to: 'Highland Pastures', date: '2024-10-28 09:15', status: 'completed' },
 ]
 
+// ---------- 2. Farm Batches (for GET /api/farms/batches) ----------
+export const MOCK_FARM_BATCHES = [
+  { batch_id: 'BCH-2024-8921', farm_id: 'farm_001', farm_name: 'Green Valley Farm',  crop_type: 'Wheat' as const,    batch_date: '2026-07-01', yield_kg: 5000, available_quantity_kg: 5000 },
+  { batch_id: 'BCH-2024-8922', farm_id: 'farm_001', farm_name: 'Green Valley Farm',  crop_type: 'Rice' as const,     batch_date: '2026-06-15', yield_kg: 3200, available_quantity_kg: 3200 },
+  { batch_id: 'BCH-2024-8923', farm_id: 'farm_002', farm_name: 'Sunrise Organics',   crop_type: 'Corn' as const,     batch_date: '2026-07-03', yield_kg: 4100, available_quantity_kg: 4100 },
+  { batch_id: 'BCH-2024-8924', farm_id: 'farm_002', farm_name: 'Sunrise Organics',   crop_type: 'Soybeans' as const, batch_date: '2026-06-28', yield_kg: 2800, available_quantity_kg: 2800 },
+  { batch_id: 'BCH-2024-8925', farm_id: 'farm_003', farm_name: 'Highland Pastures', crop_type: 'Wheat' as const,    batch_date: '2026-07-05', yield_kg: 6000, available_quantity_kg: 6000 },
+]
+
 // ---------- 3. Tokens (Regulator monitoring) ----------
 export const MOCK_TOKENS: Token[] = [
   { id: 'TKN-2024-001', asset: 'Wheat Batch A',   owner: 'Green Valley Farm',  status: 'normal',  date: '2024-10-12 09:30' },

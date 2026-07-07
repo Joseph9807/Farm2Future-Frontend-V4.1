@@ -1,9 +1,16 @@
 // =====================================================================
 // 2. Farm Data — POST /api/farms/{farmId}/data
+//    GET  /api/farms/batches
 // =====================================================================
 
 import { USE_MOCK, request, delay } from './client'
-import type { FarmDataSubmitRequest, FarmDataSubmitResponse } from '@/types/api'
+import { MOCK_FARM_BATCHES } from './__mocks__'
+import type {
+  FarmDataSubmitRequest,
+  FarmDataSubmitResponse,
+  FarmBatchSummary,
+  GetFarmBatchesParams,
+} from '@/types/api'
 
 export async function submitFarmData(req: FarmDataSubmitRequest): Promise<FarmDataSubmitResponse> {
   if (USE_MOCK) {
@@ -17,5 +24,20 @@ export async function submitFarmData(req: FarmDataSubmitRequest): Promise<FarmDa
   return request<FarmDataSubmitResponse>(`/api/farms/${req.farm_id}/data`, {
     method: 'POST',
     body: req,
+  })
+}
+
+export async function getFarmBatches(
+  params: GetFarmBatchesParams = {},
+): Promise<FarmBatchSummary[]> {
+  if (USE_MOCK) {
+    await delay(300)
+    let batches = MOCK_FARM_BATCHES
+    if (params.farmId) batches = batches.filter(b => b.farm_id === params.farmId)
+    if (params.cropType) batches = batches.filter(b => b.crop_type === params.cropType)
+    return batches
+  }
+  return request<FarmBatchSummary[]>('/api/farms/batches', {
+    query: params as Record<string, string | number | undefined>,
   })
 }

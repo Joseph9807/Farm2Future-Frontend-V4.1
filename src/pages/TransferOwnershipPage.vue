@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { PlusCircle, ArrowRight, CheckCircle } from 'lucide-vue-next'
-import { issueToken, transferToken, getTransactions, getTokens, ApiClientError } from '@/api'
-import type { Transaction, Token } from '@/types/api'
-import { useBatchId } from '@/composables/useBatchId'
+import { issueToken, transferToken, getTransactions, getTokens, getFarmBatches, ApiClientError } from '@/api'
+import type { Transaction, Token, FarmBatchSummary } from '@/types/api'
 
 const isIssuing = ref(false)
 const isTransferring = ref(false)
@@ -12,7 +11,8 @@ const errorMsg = ref<string | null>(null)
 
 const recentTransfers = ref<Transaction[]>([])
 const tokenOptions = ref<Token[]>([])
-const { latestBatchId } = useBatchId()
+const batches = ref<FarmBatchSummary[]>([])
+const selectedBatchId = ref('')
 
 onMounted(async () => {
   try {
@@ -23,6 +23,10 @@ onMounted(async () => {
   try {
     const tokenRes = await getTokens()
     tokenOptions.value = tokenRes.items
+  } catch (_) { /* fallback: empty list */ }
+
+  try {
+    batches.value = await getFarmBatches()
   } catch (_) { /* fallback: empty list */ }
 })
 
@@ -40,7 +44,7 @@ async function handleIssue(e: Event) {
   try {
     const res = await issueToken({
       crop_type: (fd.get('cropType') as string) || 'Wheat',
-      batch_id: fd.get('batchId') as string,
+      batch_id: selectedBatchId.value,
       quantity_kg: Number(fd.get('quantityKg') ?? 0),
     })
     showSuccessToast(`Token ${res.token_id} issued successfully on-chain.`)
@@ -88,7 +92,7 @@ async function handleTransfer(e: Event) {
         </div>
         <form @submit="handleIssue" class="space-y-4">
           <div><label class="block text-sm font-medium text-gray-700 mb-1">Crop Type</label><select name="cropType" class="input-field" required><option value="">Select crop...</option><option>Wheat</option><option>Rice</option><option>Corn</option><option>Soybeans</option></select></div>
-          <div><label class="block text-sm font-medium text-gray-700 mb-1">Batch ID</label><input type="text" name="batchId" class="input-field bg-gray-50" :value="latestBatchId ?? ''" disabled :placeholder="latestBatchId ? '' : 'Submit farm data first'" /></div>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Batch ID</label><select v-model="selectedBatchId" class="input-field" required><option value="">Select a batch...</option><option v-for="b in batches" :key="b.batch_id" :value="b.batch_id">{{ b.batch_id }} — {{ b.crop_type }} ({{ b.farm_name }}, {{ b.available_quantity_kg }} kg)</option></select></div>
           <div><label class="block text-sm font-medium text-gray-700 mb-1">Quantity (kg)</label><input type="number" name="quantityKg" class="input-field" placeholder="e.g. 5000" required min="1" /></div>
           <p v-if="errorMsg" class="text-sm text-red-600">{{ errorMsg }}</p>
           <button type="submit" :disabled="isIssuing" class="btn-primary w-full mt-2">{{ isIssuing ? 'Processing...' : 'Issue Token' }}</button>

@@ -63,6 +63,21 @@ export interface FarmDataSubmitResponse {
   submitted_at: string          // ISO timestamp
 }
 
+export interface FarmBatchSummary {
+  batch_id: string
+  farm_id: string
+  farm_name: string
+  crop_type: CropType
+  batch_date: string            // ISO date
+  yield_kg: number
+  available_quantity_kg: number
+}
+
+export interface GetFarmBatchesParams {
+  farmId?: string
+  cropType?: string
+}
+
 // ---------- 3. Tokens ----------
 export interface TokenIssueRequest {
   crop_type: CropType
