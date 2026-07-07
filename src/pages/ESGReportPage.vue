@@ -46,12 +46,15 @@ async function handleExport(format: ReportFormat) {
   if (!report.value) return
   isExporting.value = format
   try {
+    // Map entity to farmId: pass only when a specific farm is selected (not "All Entities")
+    const farmId = (report.value.entity && report.value.entity !== 'All Entities')
+      ? report.value.entity
+      : undefined
+
     const res = await exportESGReport(format, {
+      farmId,
       from: report.value.period.from,
-      to: report.value.period.to,
-      entity: report.value.entity,
     })
-    // In mock mode this returns a data: URL; in real mode it's a presigned S3 link.
     window.open(res.download_url, '_blank')
   } catch (err) {
     errorMsg.value = err instanceof ApiClientError ? err.message : `Failed to export ${format}.`

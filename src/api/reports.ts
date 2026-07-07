@@ -26,16 +26,21 @@ export async function generateESGReport(req: ESGReportRequest): Promise<ESGRepor
 
 export async function exportESGReport(
   format: ReportFormat,
-  req: ESGReportRequest,
+  options?: { farmId?: string; from?: string },
 ): Promise<ExportReportResponse> {
   if (USE_MOCK) {
     await delay()
+    const label = [options?.farmId, options?.from].filter(Boolean).join(' / ')
     return {
-      download_url: `data:text/plain;charset=utf-8,Mock ${format} export for ${req.entity} (${req.from} → ${req.to})`,
+      download_url: `data:text/plain;charset=utf-8,Mock ${format} export${label ? ` (${label})` : ''}`,
       expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
     }
   }
   return request<ExportReportResponse>('/api/reports/esg/export', {
-    query: { format: format.toLowerCase() },
+    query: {
+      format: format.toLowerCase(),
+      farmId: options?.farmId || undefined,
+      from: options?.from || undefined,
+    },
   })
 }

@@ -2,7 +2,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { Search } from 'lucide-vue-next'
 import Badge from '../components/Badge.vue'
-import { listTokens, ApiClientError } from '@/api'
+import { getTokens, ApiClientError } from '@/api'
 import type { Token } from '@/types/api'
 
 type Status = 'normal' | 'flagged' | 'at-risk'
@@ -12,16 +12,13 @@ const isLoading = ref(false)
 const errorMsg = ref<string | null>(null)
 const filter = ref<'all' | 'normal' | 'flagged'>('all')
 const search = ref('')
+const currentPage = ref(1)
+const pageSize = 20
+const totalItems = ref(0)
 
-const filteredTokens = computed(() => tokens.value.filter(t => {
-  if (filter.value === 'normal' && t.status !== 'normal') return false
-  if (filter.value === 'flagged' && t.status !== 'flagged' && t.status !== 'at-risk') return false
-  if (search.value) {
-    const q = search.value.toLowerCase()
-    if (!t.id.toLowerCase().includes(q) && !t.owner.toLowerCase().includes(q)) return false
-  }
-  return true
-}))
+const totalPages = computed(() => Math.max(1, Math.ceil(totalItems.value / pageSize)))
+const showingFrom = computed(() => tokens.value.length ? (currentPage.value - 1) * pageSize + 1 : 0)
+const showingTo = computed(() => Math.min(currentPage.value * pageSize, totalItems.value))
 
 const statusLabel = (s: Status) => s.charAt(0).toUpperCase() + s.slice(1).replace('-', ' ')
 
@@ -29,9 +26,14 @@ async function loadTokens() {
   isLoading.value = true
   errorMsg.value = null
   try {
-    // Status filter is applied client-side for snappy UX, but we still call
-    // the API with the search term so backend filtering kicks in when wired up.
-    tokens.value = await listTokens({ search: search.value || undefined })
+    const res = await getTokens({
+      page: currentPage.value,
+      size: pageSize,
+      status: filter.value,
+      search: search.value || undefined,
+    })
+    tokens.value = res.items
+    totalItems.value = res.total
   } catch (err) {
     errorMsg.value = err instanceof ApiClientError ? err.message : 'Failed to load tokens.'
   } finally {
@@ -39,8 +41,14 @@ async function loadTokens() {
   }
 }
 
+function goToPage(p: number) {
+  if (p < 1 || p > totalPages.value || p === currentPage.value) return
+  currentPage.value = p
+  loadTokens()
+}
+
 onMounted(loadTokens)
-watch(search, () => { loadTokens() })
+watch([search, filter], () => { currentPage.value = 1; loadTokens() })
 </script>
 
 <template>
@@ -71,7 +79,7 @@ watch(search, () => { loadTokens() })
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
-            <tr v-for="token in filteredTokens" :key="token.id" :class="token.status==='flagged'?'bg-red-50/50':'hover:bg-gray-50'">
+            <tr v-for="token in tokens" :key="token.id" :class="token.status==='flagged'?'bg-red-50/50':'hover:bg-gray-50'">
               <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-farm-700">{{ token.id }}</td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ token.asset }}</td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ token.owner }}</td>
@@ -79,16 +87,16 @@ watch(search, () => { loadTokens() })
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ token.date }}</td>
               <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium"><button class="text-farm-600 hover:text-farm-900">View Details</button></td>
             </tr>
-            <tr v-if="filteredTokens.length===0"><td colspan="6" class="px-6 py-12 text-center text-gray-500">No tokens found.</td></tr>
+            <tr v-if="tokens.length===0"><td colspan="6" class="px-6 py-12 text-center text-gray-500">No tokens found.</td></tr>
           </tbody>
         </table>
       </div>
       <div class="bg-white px-4 py-3 border-t border-gray-200 flex items-center justify-between sm:px-6">
-        <p class="text-sm text-gray-700">Showing <span class="font-medium">1</span> to <span class="font-medium">{{ filteredTokens.length }}</span> of <span class="font-medium">{{ filteredTokens.length }}</span> results</p>
+        <p class="text-sm text-gray-700">Showing <span class="font-medium">{{ showingFrom }}</span> to <span class="font-medium">{{ showingTo }}</span> of <span class="font-medium">{{ totalItems }}</span> results</p>
         <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
-          <button class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">Previous</button>
-          <button class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-farm-50 text-sm font-medium text-farm-600">1</button>
-          <button class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">Next</button>
+          <button @click="goToPage(currentPage - 1)" :disabled="currentPage <= 1" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">Previous</button>
+          <button class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-farm-50 text-sm font-medium text-farm-600">{{ currentPage }}</button>
+          <button @click="goToPage(currentPage + 1)" :disabled="currentPage >= totalPages" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">Next</button>
         </nav>
       </div>
     </div>
